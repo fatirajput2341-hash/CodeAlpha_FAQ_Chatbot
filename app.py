@@ -3,7 +3,7 @@ import streamlit as st
 # 1. Premium Clean Configuration
 st.set_page_config(page_title="Smart AI Chatbot", page_icon="🤖", layout="centered")
 
-# Custom UI Style for High Contrast and No Browser Red Lines
+# Custom UI Style for High Contrast and Removing Browser Red Lines completely
 st.markdown("""
     <style>
     .stApp {
@@ -35,9 +35,11 @@ st.markdown("""
         border-left: 4px solid #34d399;
         font-family: sans-serif;
     }
-    /* Disabling red zig zag spell-checks in browser input bar */
-    input {
+    
+    /* Global force disable browser spellcheck red waves */
+    input, textarea {
         spellcheck: false !important;
+        -webkit-spellcheck: false !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -89,8 +91,8 @@ for msg in st.session_state.chat_history:
     else:
         st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {msg['text']}</div>", unsafe_allow_html=True)
 
-# 4. User Input Prompt Bar
-user_query = st.chat_input("Ask me anything...")
+# 4. User Input Prompt Bar with proper high-visibility Placeholder
+user_query = st.chat_input("Ask me anything about Education, Personal, or GK...")
 
 if user_query:
     st.markdown(f"<div class='chat-bubble-user'><b>👤 You:</b> {user_query}</div>", unsafe_allow_html=True)
@@ -110,6 +112,6 @@ if user_query:
     st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {chatbot_response}</div>", unsafe_allow_html=True)
     st.session_state.chat_history.append({"role": "assistant", "text": chatbot_response})
 
-# 5. Only One Premium Single Human Credit Footer Line
+# 5. Single Human Credit Footer Line
 st.write("---")
 st.markdown("<p style='text-align: center; color: #64748b; font-size: 13px;'>Project Developed by Fatima | Student ID: CA/DF1/190219</p>", unsafe_allow_html=True)
