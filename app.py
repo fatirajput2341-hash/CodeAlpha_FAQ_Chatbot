@@ -10,7 +10,7 @@ from nltk.stem import WordNetLemmatizer
 @st.cache_resource
 def download_nltk_resources():
     nltk.download('punkt')
-    nltk.download('punkt_tab')  # Fixed line
+    nltk.download('punkt_tab')  
     nltk.download('stopwords')
     nltk.download('wordnet')
 
@@ -63,22 +63,29 @@ if user_message := st.chat_input("Type your question here..."):
 
     # --- NLP Cosine Similarity Logic ---
     processed_user_msg = preprocess_text(user_message)
-    processed_faqs = [preprocess_text(q) for q in faq_questions]
-    all_texts = [processed_user_msg] + processed_faqs
-
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(all_texts)
-
-    # User vs FAQs Similarity Matrix
-    similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
-    best_match_idx = similarity_scores.argmax()
-    highest_score = similarity_scores[best_match_idx]
-
-    # Threshold check
-    if highest_score > 0.2:
-        bot_reply = faq_data[best_match_idx]["answer"]
+    
+    # Validation: Agar greeting word hai ya input preprocessing ke baad khali ho gaya
+    if not processed_user_msg or user_message.lower().strip() in ["hello", "hi", "hey", "hloo"]:
+        bot_reply = "Hello! How can I help you today? Please ask a question about our policy, shipping, or payments."
     else:
-        bot_reply = "Sorry, I couldn't find an answer to that in our FAQs. Please ask something else!"
+        processed_faqs = [preprocess_text(q) for q in faq_questions]
+        all_texts = [processed_user_msg] + processed_faqs
+
+        vectorizer = TfidfVectorizer()
+        try:
+            tfidf_matrix = vectorizer.fit_transform(all_texts)
+            # User vs FAQs Similarity Matrix
+            similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
+            best_match_idx = similarity_scores.argmax()
+            highest_score = similarity_scores[best_match_idx]
+
+            # Threshold check
+            if highest_score > 0.2:
+                bot_reply = faq_data[best_match_idx]["answer"]
+            else:
+                bot_reply = "Sorry, I couldn't find an answer to that in our FAQs. Please ask something else!"
+        except Exception:
+            bot_reply = "Sorry, I couldn't understand that. Could you please rephrase your question?"
 
     # Bot response display karein
     with st.chat_message("assistant"):
