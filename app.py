@@ -1,7 +1,5 @@
-import os
+import streamlit as st
 import nltk
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.tokenize import word_tokenize
@@ -9,14 +7,20 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
 # NLTK resources download karna zaroori hai text preprocessing ke liye
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
+@st.cache_resource
+def download_nltk_resources():
+    nltk.download('punkt')
+    nltk.download('stopwords')
+    nltk.download('wordnet')
 
-app = Flask(__name__)
-CORS(app)
+download_nltk_resources()
 
-# 1. FAQ Data: Questions aur unke Answers ka dictionary
+# Page UI Config
+st.set_page_config(page_title="FAQ Chatbot", page_icon="🤖", layout="centered")
+st.title("🤖 NLP FAQ Chatbot")
+st.write("Ask any question related to our services!")
+
+# 1. FAQ Data: Questions aur unke Answers
 faq_data = [
     {"question": "What is your return policy?", "answer": "You can return any product within 30 days of purchase."},
     {"question": "How long does shipping take?", "answer": "Standard shipping takes 3-5 business days."},
@@ -24,17 +28,12 @@ faq_data = [
     {"question": "Do you offer international shipping?", "answer": "Yes, we ship worldwide with additional shipping charges."},
     {"question": "What payment methods do you accept?", "answer": "We accept Credit/Debit cards, PayPal, and Apple Pay."}
 ]
-
-# FAQs se sirf questions alag nikalne ke liye list
 faq_questions = [item["question"] for item in faq_data]
 
 # 2. Text Preprocessing Function (Using NLTK)
 def preprocess_text(text):
-    # Lowercase karna
     text = text.lower()
-    # Tokenization
     tokens = word_tokenize(text)
-    # Stopwords (faltu words) hatana aur Lemmatization (base words nikalna)
     stop_words = set(stopwords.words('english'))
     lemmatizer = WordNetLemmatizer()
     
@@ -45,45 +44,42 @@ def preprocess_text(text):
     ]
     return " ".join(cleaned_tokens)
 
-# 3. Chat Route
-@app.route('/chat', methods=['POST'])
-def chat():
-    try:
-        data = request.json
-        user_message = data.get('message', '')
+# Streamlit Chat History Maintain karne ke liye
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-        if not user_message:
-            return jsonify({'reply': 'Please type a question!'})
+# Purane messages display karne ke liye
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
-        # Preprocess both user question and FAQ questions
-        processed_user_msg = preprocess_text(user_message)
-        processed_faqs = [preprocess_text(q) for q in faq_questions]
+# User input text box
+if user_message := st.chat_input("Type your question here..."):
+    # User message display karein
+    with st.chat_message("user"):
+        st.write(user_message)
+    st.session_state.messages.append({"role": "user", "content": user_message})
 
-        # All questions ko combine karna vectorization ke liye
-        all_texts = [processed_user_msg] + processed_faqs
+    # --- NLP Cosine Similarity Logic ---
+    processed_user_msg = preprocess_text(user_message)
+    processed_faqs = [preprocess_text(q) for q in faq_questions]
+    all_texts = [processed_user_msg] + processed_faqs
 
-        # TF-IDF Vectorizer to convert text to numbers
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(all_texts)
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(all_texts)
 
-        # Cosine Similarity calculate karna (User question vs All FAQs)
-        # tfidf_matrix[0:1] user ka vector hai, baqi FAQs ke vectors hain
-        similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
+    # User vs FAQs Similarity Matrix
+    similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
+    best_match_idx = similarity_scores.argmax()
+    highest_score = similarity_scores[best_match_idx]
 
-        # Sab se zyada match hone wale score ka index nikalna
-        best_match_idx = similarity_scores.argmax()
-        highest_score = similarity_scores[0][best_match_idx]
+    # Threshold set kiya hai 0.20 tak ke exact match mil sake
+    if highest_score > 0.2:
+        bot_reply = faq_data[best_match_idx]["answer"]
+    else:
+        bot_reply = "Sorry, I couldn't find an answer to that in our FAQs. Please ask something else!"
 
-        # Agar matching score 0.2 se zyada hai to answer return karein, warna fallback message
-        if highest_score > 0.2:
-            matched_answer = faq_data[best_match_idx]["answer"]
-            return jsonify({'reply': matched_answer})
-        else:
-            return jsonify({'reply': "Sorry, I couldn't find an answer to that in our FAQs. Please ask something else!"})
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({'reply': 'Connection error or server issue occurred.'})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Bot response display karein
+    with st.chat_message("assistant"):
+        st.write(bot_reply)
+    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
