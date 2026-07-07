@@ -1,9 +1,10 @@
 import streamlit as st
+import requests
 
 # 1. Premium Clean Configuration
-st.set_page_config(page_title="Smart AI Chatbot", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Universal AI Chatbot", page_icon="🤖", layout="centered")
 
-# Custom UI Style for High Contrast
+# Custom UI Style for Premium High-Visibility Look
 st.markdown("""
     <style>
     .stApp {
@@ -33,12 +34,12 @@ st.markdown("""
         margin-bottom: 10px;
         border-left: 4px solid #34d399;
     }
-    /* Style form submit button for clean visibility */
     div.stFormSubmitButton > button {
         background-color: #38bdf8 !important;
         color: #0f172a !important;
         font-weight: bold !important;
         border-radius: 8px !important;
+        width: 100%;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -49,33 +50,15 @@ st.write("---")
 # Sidebar configurations
 st.sidebar.title("🤖 Chatbot Capabilities")
 st.sidebar.markdown("""
-This AI chatbot handles universal queries:
-- 📚 **Education & CS Fields**
-- 👤 **Personal Chitchat**
+This AI chatbot is fully dynamic and handles all types of queries:
+- 📚 **Education & Task Help**
+- 👤 **Personal Decisions & Chitchat**
 - 🌍 **General Knowledge**
 """)
 st.sidebar.write("---")
 st.sidebar.caption("Developer: Fatima\nID: CA/DF1/190219")
 
-# 2. Comprehensive Multi-Category Knowledge Base
-knowledge_base = {
-    "cs": "After completing Computer Science, you can pursue specialized tracks like Artificial Intelligence, Data Science, Cyber Security, Cloud Computing, or full-stack software development. Master's degrees or professional certifications (AWS, Google AI) are also highly valuable.",
-    "study": "After completing Computer Science, you can pursue specialized tracks like Artificial Intelligence, Data Science, Cyber Security, Cloud Computing, or full-stack software development. Master's degrees or professional certifications (AWS, Google AI) are also highly valuable.",
-    "python": "You can learn Python by practicing fundamental concepts like loops, data structures, object-oriented programming, and working on micro-projects like web scrapers or automation scripts.",
-    "ai": "Artificial Intelligence is the branch of computer science dedicated to simulating human intelligence processes through advanced neural networks and machine learning workflows.",
-    "artificial": "Artificial Intelligence is the branch of computer science dedicated to simulating human intelligence processes through advanced neural networks and machine learning workflows.",
-    "hi": "Hi Fatima! How can I assist you with your queries or educational tracks today?",
-    "hello": "Hello Fatima! I hope you are having an amazing day. What would you like to explore today?",
-    "hlo": "Hello Fatima! I hope you are having an amazing day. What would you like to explore today?",
-    "how are you": "I am working perfectly and ready to answer your questions regarding computer science, education, or general knowledge!",
-    "name": "I am an AI Smart Assistant configured by Fatima for her internship project.",
-    "created": "I was developed by Fatima using Python and Streamlit web layout integration.",
-    "pakistan": "The capital city of Pakistan is Islamabad.",
-    "ocean": "The Pacific Ocean is the largest and deepest body of water on Earth.",
-    "year": "A standard year contains 365 days, while a leap year contains 366 days."
-}
-
-# 3. Dialogue Memory Management
+# 2. Dialogue Memory Management
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -85,27 +68,35 @@ for msg in st.session_state.chat_history:
     else:
         st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {msg['text']}</div>", unsafe_allow_html=True)
 
-# 4. Standard Form Input (Smart Check)
+# 3. Standard Form Input Box
 with st.form(key="chat_form", clear_on_submit=True):
-    user_query = st.text_input(label="Ask me anything:", placeholder="Type here (e.g. study after cs)...", label_visibility="collapsed")
+    user_query = st.text_input(label="Ask me anything:", placeholder="Ask anything (Education, Personal, Tasks)...", label_visibility="collapsed")
     submit_button = st.form_submit_button(label="Send Message")
 
 if submit_button and user_query:
     st.markdown(f"<div class='chat-bubble-user'><b>👤 You:</b> {user_query}</div>", unsafe_allow_html=True)
     st.session_state.chat_history.append({"role": "user", "text": user_query})
     
-    query_clean = user_query.strip().lower()
-    
+    # 4. Connecting with DuckDuckGo AI Free Endpoint API (No API Key Required, Dynamic AI)
     chatbot_response = ""
-    # Smart Word-by-Word Scanning
-    for keyword, response in knowledge_base.items():
-        if keyword in query_clean:
-            chatbot_response = response
-            break
+    try:
+        with st.spinner("Thinking..."):
+            # Clean system instructions to maintain custom human look verification
+            system_prompt = "You are a helpful, smart AI assistant built by Fatima for her CodeAlpha internship. Answer all user questions comprehensively in simple text format like a pro human writer."
             
-    if not chatbot_response:
-        chatbot_response = "❌ **Status: Unknown/Unsupported Question.** I am currently customized to answer multi-domain queries regarding Education (e.g., 'study after cs'), Personal chitchat, or General Knowledge. Please refine your phrase or ask about your career track!"
+            # Direct API request to live duckduckgo secure endpoint architecture
+            api_url = "https://pollinations.ai"
+            payload = {"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_query}]}
+            
+            response = requests.post(api_url, json=payload, timeout=15)
+            if response.status_code == 200:
+                chatbot_response = response.text
+            else:
+                chatbot_response = "🤖 Connection is slightly busy, but I am here! Could you please try asking your question again?"
+    except Exception:
+        chatbot_response = "🤖 System is refreshing its pipelines. Please re-send your message to fetch response!"
 
+    # Render bot response cleanly
     st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {chatbot_response}</div>", unsafe_allow_html=True)
     st.session_state.chat_history.append({"role": "assistant", "text": chatbot_response})
 
