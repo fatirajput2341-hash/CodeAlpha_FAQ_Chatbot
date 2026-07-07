@@ -1,110 +1,38 @@
-import streamlit as st
-import requests
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from google import genai
 
-# 1. Premium Clean Space Setup
-st.set_page_config(page_title="Universal AI Assistant", page_icon="🤖", layout="centered")
+app = Flask(__name__)
+CORS(app)  # Is se frontend connection block nahi hoga
 
-# Custom UI Style for Premium High-Visibility Look
-st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(to right, #0f172a, #1e293b);
-        color: #f8fafc;
-    }
-    .main-title {
-        color: #38bdf8;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        text-align: center;
-        font-weight: 800;
-        margin-top: -20px;
-    }
-    .chat-bubble-user {
-        background-color: #334155;
-        color: #ffffff;
-        padding: 12px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        border-left: 4px solid #38bdf8;
-    }
-    .chat-bubble-bot {
-        background-color: #1e293b;
-        color: #f1f5f9;
-        padding: 12px;
-        border-radius: 10px;
-        margin-bottom: 10px;
-        border-left: 4px solid #34d399;
-    }
-    div.stFormSubmitButton > button {
-        background-color: #38bdf8 !important;
-        color: #0f172a !important;
-        font-weight: bold !important;
-        border-radius: 8px !important;
-        width: 100%;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Apni Gemini API Key yahan dalein ya system environment variable set karein
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_ACTUAL_GEMINI_API_KEY_HERE")
 
-st.markdown("<h1 class='main-title'>🤖 Universal Smart AI Assistant</h1>", unsafe_allow_html=True)
-st.write("---")
+# Google Gen AI Client Initialize karein
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Sidebar configurations
-st.sidebar.title("🤖 Chatbot Capabilities")
-st.sidebar.markdown("""
-Powered by Premium Generative AI Engine.
-- 🌍 **Multi-Language Support (English, Urdu, Roman Urdu)**
-- 🎓 **Education & Coding Tracks**
-- 🎭 **Funny Chats & Entertainment**
-- 📜 **History & General Knowledge**
-""")
-st.sidebar.write("---")
-st.sidebar.caption("Developer: Fatima\nID: CA/DF1/190219")
-
-# 2. Dialogue Memory Management
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-for msg in st.session_state.chat_history:
-    if msg["role"] == "user":
-        st.markdown(f"<div class='chat-bubble-user'><b>👤 You:</b> {msg['text']}</div>", unsafe_allow_html=True)
-    else:
-        st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {msg['text']}</div>", unsafe_allow_html=True)
-
-# 3. Standard Form Input Box
-with st.form(key="chat_form", clear_on_submit=True):
-    user_query = st.text_input(label="Ask me anything:", placeholder="Ask anything in any language (English, Urdu, Typings)...", label_visibility="collapsed")
-    submit_button = st.form_submit_button(label="Send Message")
-
-if submit_button and user_query:
-    st.markdown(f"<div class='chat-bubble-user'><b>👤 You:</b> {user_query}</div>", unsafe_allow_html=True)
-    st.session_state.chat_history.append({"role": "user", "text": user_query})
-    
-    # 4. Connecting with Gemini Hyper-Stable Free API Router
-    chatbot_response = ""
+@app.route('/chat', methods=['POST'])
+def chat():
     try:
-        with st.spinner("Thinking..."):
-            system_prompt = "You are a smart, witty, and extremely intelligent AI assistant built by Fatima for her CodeAlpha internship. Answer all user questions comprehensively. You can perfectly understand English, Urdu, and Roman Urdu typing. Respond in the same language or typing style the user uses."
-            
-            # Stable direct cloud server endpoint
-            api_url = "https://pollinations.ai"
-            payload = {
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_query}
-                ],
-                "model": "searchgpt" # High stability model routing
-            }
-            
-            response = requests.post(api_url, json=payload, timeout=25)
-            if response.status_code == 200:
-                chatbot_response = response.text.strip()
-            else:
-                chatbot_response = "🤖 Connection is adjusting. Please type your query once more!"
-    except Exception:
-        chatbot_response = "🤖 Signal pipeline refreshed. Please re-send your text to fetch response!"
+        data = request.json
+        user_message = data.get('message', '')
 
-    # Render bot response cleanly
-    st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {chatbot_response}</div>", unsafe_allow_html=True)
-    st.session_state.chat_history.append({"role": "assistant", "text": chatbot_response})
+        if not user_message:
+            return jsonify({'error': 'Message cannot be empty'}), 400
 
-st.write("---")
-st.markdown("<p style='text-align: center; color: #64748b; font-size: 13px;'>Project Developed by Fatima | Student ID: CA/DF1/190219</p>", unsafe_allow_html=True)
+        # Gemini model se response generate karein
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_message,
+        )
+
+        return jsonify({'reply': response.text})
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return jsonify({'error': 'Internal Server Error', 'details': str(e)}), 500
+
+if __name__ == '__main__':
+    # Default Flask port 5000 par chalega
+    app.run(host='0.0.0.0', port=5000, debug=True)
