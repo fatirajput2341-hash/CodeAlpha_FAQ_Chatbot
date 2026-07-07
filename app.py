@@ -1,93 +1,88 @@
+import os
 import streamlit as st
-import nltk
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+from google import genai
+from google.genai import types
 
-# NLTK resources download karne ka updated function
-@st.cache_resource
-def download_nltk_resources():
-    nltk.download('punkt')
-    nltk.download('punkt_tab')  
-    nltk.download('stopwords')
-    nltk.download('wordnet')
+# Page Configurations (Title aur Icon)
+st.set_page_config(page_title="AI FAQ Chatbot", page_icon="🤖", layout="centered")
 
-download_nltk_resources()
+# --- UI Styling: Professional Dark/Clean UI ---
+st.markdown("""
+    <style>
+    /* Main Background color */
+    .stApp {
+        background-color: #141d26;
+        color: #ffffff;
+    }
+    /* Input Box Styling */
+    .stChatInputContainer {
+        border-radius: 10px;
+        border: 1px solid #1da1f2;
+    }
+    /* Titles styling */
+    h1, h3, p {
+        color: #ffffff !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# Page UI Config
-st.set_page_config(page_title="FAQ Chatbot", page_icon="🤖", layout="centered")
-st.title("🤖 NLP FAQ Chatbot")
-st.write("Ask any question related to our services!")
+st.title("🤖 Intelligent FAQ Chatbot")
+st.write("Ask anything in any language (English, Urdu, Roman Urdu)...")
 
-# 1. FAQ Data: Questions aur unke Answers
-faq_data = [
-    {"question": "What is your return policy?", "answer": "You can return any product within 30 days of purchase."},
-    {"question": "How long does shipping take?", "answer": "Standard shipping takes 3-5 business days."},
-    {"question": "How can I track my order?", "answer": "You will receive a tracking link via email once your order ships."},
-    {"question": "Do you offer international shipping?", "answer": "Yes, we ship worldwide with additional shipping charges."},
-    {"question": "What payment methods do you accept?", "answer": "We accept Credit/Debit cards, PayPal, and Apple Pay."}
-]
-faq_questions = [item["question"] for item in faq_data]
+# --- Gemini API Client Setup ---
+# Apni Gemini API Key yahan enter karein (Ya environment variable set karein)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_ACTUAL_GEMINI_API_KEY_HERE")
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-# 2. Text Preprocessing Function (Using NLTK)
-def preprocess_text(text):
-    text = text.lower()
-    tokens = word_tokenize(text)
-    stop_words = set(stopwords.words('english'))
-    lemmatizer = WordNetLemmatizer()
-    
-    cleaned_tokens = [
-        lemmatizer.lemmatize(word) 
-        for word in tokens 
-        if word.isalnum() and word not in stop_words
-    ]
-    return " ".join(cleaned_tokens)
+# --- Task 2: System Instructions for FAQ & Multi-language ---
+system_instruction = """
+You are an expert FAQ Chatbot for a product/service. 
+Your primary task is to match user questions with the company's FAQ knowledge base.
+FAQs Context:
+- Return Policy: 30 days of purchase, money-back guarantee.
+- Shipping: Standard takes 3-5 business days. International shipping is available with extra charges.
+- Order Tracking: Tracking link sent via email after shipment.
+- Payment Methods: Credit/Debit cards, PayPal, Apple Pay.
 
-# Streamlit Chat History Maintain karne ke liye
+CRITICAL RULES:
+1. The user can ask questions in English, Urdu (Urdu script), or Roman Urdu/Hinglish (e.g., 'delivery kitni der me hogi?', 'pese kese dene hain?', 'hloo').
+2. Always detect the user's language and reply in the EXACT SAME language/style they used. If they ask in Roman Urdu, reply in Roman Urdu. If they say 'hloo/hi', greet them friendly.
+3. If the question is completely outside these FAQs, politely tell them that you only handle product FAQs.
+"""
+
+# Streamlit Session State for Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Purane messages display karne ke liye
+# Display previous messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# User input text box
-if user_message := st.chat_input("Type your question here..."):
-    # User message display karein
+# User Input Field
+if user_message := st.chat_input("Ask anything in any language..."):
+    # Display User Message
     with st.chat_message("user"):
         st.write(user_message)
     st.session_state.messages.append({"role": "user", "content": user_message})
 
-    # --- NLP Cosine Similarity Logic ---
-    processed_user_msg = preprocess_text(user_message)
-    
-    # Validation: Agar greeting word hai ya input preprocessing ke baad khali ho gaya
-    if not processed_user_msg or user_message.lower().strip() in ["hello", "hi", "hey", "hloo"]:
-        bot_reply = "Hello! How can I help you today? Please ask a question about our policy, shipping, or payments."
-    else:
-        processed_faqs = [preprocess_text(q) for q in faq_questions]
-        all_texts = [processed_user_msg] + processed_faqs
+    # Call Gemini API with System Instructions
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.3 # Low temperature keeps it focused on FAQs
+            )
+        )
+        bot_reply = response.text
+    except Exception as e:
+        bot_reply = "Connection is adjusting. Please type your query once more!"
+        print(f"Error: {e}")
 
-        vectorizer = TfidfVectorizer()
-        try:
-            tfidf_matrix = vectorizer.fit_transform(all_texts)
-            # User vs FAQs Similarity Matrix
-            similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
-            best_match_idx = similarity_scores.argmax()
-            highest_score = similarity_scores[best_match_idx]
-
-            # Threshold check
-            if highest_score > 0.2:
-                bot_reply = faq_data[best_match_idx]["answer"]
-            else:
-                bot_reply = "Sorry, I couldn't find an answer to that in our FAQs. Please ask something else!"
-        except Exception:
-            bot_reply = "Sorry, I couldn't understand that. Could you please rephrase your question?"
-
-    # Bot response display karein
+    # Display Bot Response
     with st.chat_message("assistant"):
         st.write(bot_reply)
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
