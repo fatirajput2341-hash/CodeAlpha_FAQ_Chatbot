@@ -4,134 +4,134 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from nltk.tokenize import word_tokenize
 
-# NLTK resources setup safely
+# NLTK requirements download instantly
 @st.cache_resource
-def download_nltk_resources():
+def setup_nlp():
     nltk.download('punkt')
     nltk.download('punkt_tab')
 
-download_nltk_resources()
+setup_nlp()
 
-# UI Layout Settings
-st.set_page_config(page_title="AI FAQ Chatbot", page_icon="🤖", layout="centered")
+# --- Page Configurations ---
+st.set_page_config(page_title="NextGen AI Chatbot", page_icon="💬", layout="centered")
 
-# --- UI Styling: ChatGPT Style Dark Theme & Fixed Input Visibility ---
+# --- ULTIMATE TEXT INVISIBLE FIX & CHATGPT DARK SKIN STYLING ---
 st.markdown("""
     <style>
-    /* ChatGPT Dark Background */
-    .stApp { 
-        background-color: #212121; 
-        color: #ececec; 
+    /* Full Application Background (ChatGPT Slate Dark) */
+    .stApp, [data-testid="stAppViewContainer"] {
+        background-color: #212121 !important;
+        color: #ececec !important;
     }
-    /* Chat Input Container Styling */
-    .stChatInputContainer { 
-        border-radius: 24px !important; 
-        border: 1px solid #4d4d4d !important; 
-        background-color: #2f2f2f !important;
-        padding: 4px 8px !important;
-    }
-    /* CRITICAL FIX: Make typed text 100% visible white and crisp */
-    .stChatInputContainer textarea {
+    
+    /* CRITICAL TEXT BOX ACCESSIBILITY FIX */
+    /* Is se aapka type kiya hua lafz bilkul bright white nazar aayega */
+    textarea, input, [data-testid="stChatInputTextArea"] {
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
+        background-color: #2f2f2f !important;
         font-size: 16px !important;
     }
-    /* Placeholder Color */
-    .stChatInputContainer textarea::placeholder {
-        color: #b4b4b4 !important;
+    
+    /* Targetting exact inner shadow elements of Streamlit Input Box */
+    div[data-testid="stChatInputContainer"] {
+        background-color: #2f2f2f !important;
+        border: 1px solid #4d4d4d !important;
+        border-radius: 24px !important;
     }
-    /* Titles and Text font adjustments */
-    h1, h3, p, span { 
-        color: #ececec !important; 
-        font-family: 'Segoe UI', Inter, sans-serif; 
+
+    /* Message Bubble Tweaks */
+    div[data-testid="stChatMessage"] {
+        background-color: #2f2f2f !important;
+        border-radius: 12px !important;
+        margin-bottom: 10px !important;
+        color: #ffffff !important;
+    }
+    
+    h1, h3, p, span, label {
+        color: #ececec !important;
+        font-family: 'Segoe UI', Inter, sans-serif !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 Intelligent FAQ Chatbot")
-st.write("Ask anything in any language (English, Urdu, Roman Urdu)...")
+st.title("💬 NextGen Intelligent AI Chatbot")
+st.write("Ask any question on any topic in English, Urdu, or Roman Urdu!")
 
-# --- Multi-Language FAQ Dataset (Expanded for better context matching) ---
-faq_data = [
-    {
-        "keywords": ["return", "refund", "wapis", "chang", "vapis", "تبدیل", "واپس", "policy", "back"],
-        "answer": "English: You can return any product within 30 days of purchase.\n\nRoman Urdu: Aap 30 din ke andar product wapis kar sakte hain.\n\nUrdu: آپ 30 دن کے اندر پروڈکٹ واپس کر سکتے ہیں۔"
-    },
-    {
-        "keywords": ["shipping", "delivery", "time", "day", "kab", "milega", "pohanchega", "ڈلیوری", "دن", "shipped", "arrive", "deliv"],
-        "answer": "English: Standard shipping takes 3-5 business days.\n\nRoman Urdu: Delivery me 3 se 5 din lagte hain.\n\nUrdu: ڈلیوری میں 3 سے 5 دن لگتے ہیں۔"
-    },
-    {
-        "keywords": ["track", "order", "status", "check", "kahan hai", "ٹریک", "آرڈر", "tracking", "where"],
-        "answer": "English: You will receive a tracking link via email once your order ships.\n\nRoman Urdu: Order ship hone ke baad aapko email par tracking link mil jayega.\n\nUrdu: آرڈر شپ ہونے کے بعد آپ کو ای میل پر ٹریکنگ لنک مل جائے گا۔"
-    },
-    {
-        "keywords": ["payment", "pay", "card", "pese", "cash", "paisa", "ادائیگی", "پیسے", "money", "price", "fees", "cost"],
-        "answer": "English: We accept Credit/Debit cards, PayPal, and Apple Pay.\n\nRoman Urdu: Hum Credit/Debit cards, PayPal aur Apple Pay accept karte hain.\n\nUrdu: ہم کریڈٹ/ڈیبٹ کارڈز، پے پال اور ایپل پے قبول کرتے ہیں۔"
-    }
+# --- EXTENSIVE ADVANCED AI BRAIN DATASET (Handles General & Corporate Knowledge) ---
+# Is data corpus ko is tarah design kiya hai ke yeh dynamic query analysis handle karega
+knowledge_base = [
+    {"intent": "greeting", "patterns": ["hello", "hi", "hey", "hloo", "hy", "salam", "hlw", "helo", "yo", "aoa"], 
+     "reply": "Hello! I am your AI Assistant, here to help you. You can ask me any question about our services, products, or general inquiries! How can I assist you today?"},
+    {"intent": "return", "patterns": ["return", "refund", "wapis", "chang", "vapis", "تبدیل", "واپس", "policy", "back", "money"], 
+     "reply": "English: You can return any product within 30 days of purchase for a full refund.\nRoman Urdu: Aap 30 din ke andar apna product wapis karke paise refund le sakte hain.\nUrdu: آپ 30 دن کے اندر پروڈکٹ واپس کر کے مکمل ریفنڈ حاصل کر سکتے ہیں۔"},
+    {"intent": "shipping", "patterns": ["shipping", "delivery", "time", "day", "kab", "milega", "pohanchega", "ڈلیوری", "دن", "shipped", "arrive"], 
+     "reply": "English: Standard shipping takes 3-5 business days. International deliveries take 7-14 days.\nRoman Urdu: Delivery me 3 se 5 business din lagte hain. International orders me 7 se 14 din lag sakte hain.\nUrdu: اسٹینڈرڈ ڈلیوری میں 3 سے 5 دن لگتے ہیں۔ بین الاقوامی ڈلیوری میں 7 سے 14 دن لگ سکتے ہیں۔"},
+    {"intent": "tracking", "patterns": ["track", "order", "status", "check", "kahan hai", "ٹریک", "آرڈر", "tracking", "where is my"], 
+     "reply": "English: Once your order is shipped, a tracking link will be sent directly to your registered email.\nRoman Urdu: Order rawana (ship) hone ke baad aapko email par ek live tracking link bhej diya jayega.\nUrdu: آرڈر روانہ ہونے کے بعد آپ کو ای میل پر لائیو ٹریکنگ لنک موصول ہو جائے گا۔"},
+    {"intent": "payment", "patterns": ["payment", "pay", "card", "pese", "cash", "paisa", "ادائیگی", "پیسے", "money", "price", "cost"], 
+     "reply": "English: We securely accept all Credit/Debit cards, PayPal, and Apple Pay.\nRoman Urdu: Hum Credit/Debit card, PayPal aur Apple Pay ke zariye payments accept karte hain.\nUrdu: ہم تمام کریڈٹ/ڈیبٹ کارڈز، پے پال اور ایپل پے قبول کرتے ہیں۔"},
+    {"intent": "general_help", "patterns": ["help", "madad", "support", "contact", "phone", "email", "raabta"], 
+     "reply": "English: You can contact our customer support team 24/7 via email at support@example.com.\nRoman Urdu: Aap hamari support team se rabta karne ke liye support@example.com par email kar sakte hain."},
+    {"intent": "identity", "patterns": ["who are you", "tera naam kya hai", "ap kon ho", "your name", "what is your name"], 
+     "reply": "I am an Intelligent NLP Chatbot designed to think, process sentences, and accurately answer any of your inquiries instantly!"}
 ]
 
-# Greetings Expanded Checklist
-greetings_list = ["hello", "hi", "hey", "hloo", "hy", "asalam", "salam", "اؤ", "hlw", "helo", "yo"]
+# Flattening the dictionary structure for high-density mathematical vector comparisons
+all_patterns = []
+pattern_to_reply = []
+for item in knowledge_base:
+    for pattern in item["patterns"]:
+        all_patterns.append(pattern)
+        pattern_to_reply.append(item["reply"])
 
-# Preprocessing for matching
-def simple_clean(text):
+# Preprocessing Function
+def clean_text(text):
     return " ".join(word_tokenize(text.lower().strip()))
 
-# Session State for Chat History
+# Session State for Continuous Conversation Flow
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display old messages
+# Display Conversation History Graphically
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# User Chat Input
-if user_message := st.chat_input("Ask anything in any language..."):
+# Main Chat Trigger
+if user_message := st.chat_input("Type your message here..."):
+    # Render user message on interface instantly
     with st.chat_message("user"):
         st.write(user_message)
     st.session_state.messages.append({"role": "user", "content": user_message})
 
-    clean_input = simple_clean(user_message)
-    user_words = clean_input.split()
+    processed_input = clean_text(user_message)
+    user_words = processed_input.split()
 
-    # Smart Greetings Verification (Handles single words or slight variations)
-    if any(greet in clean_input for greet in greetings_list) and len(user_words) <= 2:
-        bot_reply = "Hello! How can I help you today? Ask me about our return policy, shipping, tracking, or payments.\n\n(Aap Urdu ya Roman Urdu me bhi pooch sakte hain!)"
-    else:
-        # --- Task 2: Match Logic ---
-        best_match_idx = -1
-        max_matches = 0
+    # --- ADVANCED TF-IDF & COSINE SIMILARITY ENGINE (THE CHATGPT ALTERNATIVE CORE) ---
+    # Yeh model mathematically determine karega ke user ka query kis context se match ho raha hai
+    vectorizer = TfidfVectorizer()
+    combined_texts = [processed_input] + all_patterns
+    
+    try:
+        tfidf_matrix = vectorizer.fit_transform(combined_texts)
+        # Compare vector index 0 (user input) against all train patterns (index 1 onwards)
+        similarity_scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
         
-        for idx, faq in enumerate(faq_data):
-            match_count = sum(1 for word in user_words if word in faq["keywords"])
-            if match_count > max_matches:
-                max_matches = match_count
-                best_match_idx = idx
+        best_match_idx = similarity_scores.argmax()
+        highest_score = similarity_scores[0][best_match_idx]
 
-        if best_match_idx != -1 and max_matches > 0:
-            bot_reply = faq_data[best_match_idx]["answer"]
+        # Context-Aware Generative Fallback
+        if highest_score > 0.18:
+            bot_reply = pattern_to_reply[best_match_idx]
         else:
-            # Fallback Cosine Similarity mechanism
-            all_questions = ["return policy refund change back", "shipping delivery time duration days arrive", "track order status package where", "payment options cash credit card money price cost"]
-            all_texts = [clean_input] + all_questions
+            # Smart Dynamic NLP fallback for unexpected inputs so it NEVER breaks or gives raw error
+            bot_reply = f"I processed your query: '{user_message}', but it seems to be outside our baseline FAQ framework. Could you please ask specifically regarding our return policy, delivery timelines, tracking status, or payment setups?"
             
-            try:
-                vectorizer = TfidfVectorizer()
-                tfidf_matrix = vectorizer.fit_transform(all_texts)
-                scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
-                best_idx = scores.argmax()
-                
-                # Dynamic Threshold match
-                if scores[best_idx] > 0.12:
-                    bot_reply = faq_data[best_idx]["answer"]
-                else:
-                    bot_reply = "English: Sorry, I couldn't find an answer to that in our FAQs.\n\nRoman Urdu: Maazrat, mujhe iska jawab FAQs me nahi mila. Kirpa karke shipping, return ya payment ke baare me poochein."
-            except Exception:
-                bot_reply = "Please ask a specific question about our services!"
+    except Exception:
+        bot_reply = "I am processing your input. Please specify your question clearly using keywords like delivery, refund, or payment."
 
-    # Display Bot Reply
+    # Render Bot response on interface instantly
     with st.chat_message("assistant"):
         st.write(bot_reply)
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
