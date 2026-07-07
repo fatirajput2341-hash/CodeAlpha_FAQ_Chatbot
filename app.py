@@ -1,9 +1,9 @@
 import streamlit as st
 
-# 1. Premium Page Setup
-st.set_page_config(page_title="Universal AI Chatbot", page_icon="🤖", layout="centered")
+# 1. Premium Clean Configuration
+st.set_page_config(page_title="Smart AI Chatbot", page_icon="🤖", layout="centered")
 
-# Custom Professional UI Style with High Visibility Text
+# Custom UI Style for High Contrast and No Browser Red Lines
 st.markdown("""
     <style>
     .stApp {
@@ -15,12 +15,7 @@ st.markdown("""
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         text-align: center;
         font-weight: 800;
-    }
-    .sub-title {
-        color: #94a3b8;
-        text-align: center;
-        font-size: 14px;
-        margin-bottom: 30px;
+        margin-top: -20px;
     }
     .chat-bubble-user {
         background-color: #334155;
@@ -29,6 +24,7 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 10px;
         border-left: 4px solid #38bdf8;
+        font-family: sans-serif;
     }
     .chat-bubble-bot {
         background-color: #1e293b;
@@ -37,15 +33,20 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 10px;
         border-left: 4px solid #34d399;
+        font-family: sans-serif;
+    }
+    /* Disabling red zig zag spell-checks in browser input bar */
+    input {
+        spellcheck: false !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 class='main-title'>🤖 Multi-Category Smart AI Chatbot</h1>", unsafe_allow_html=True)
-st.markdown("<p class='sub-title'>CodeAlpha Artificial Intelligence Internship - Task 2</p>", unsafe_allow_html=True)
+# Main Clean Title
+st.markdown("<h1 class='main-title'>🤖 Smart AI FAQ Chatbot</h1>", unsafe_allow_html=True)
 st.write("---")
 
-# Sidebar helper to show available domains
+# Sidebar configurations
 st.sidebar.title("🤖 Chatbot Capabilities")
 st.sidebar.markdown("""
 This AI chatbot handles universal queries:
@@ -68,7 +69,7 @@ knowledge_base = {
     "hi": "Hi Fatima! How can I assist you with your queries or educational tracks today?",
     "hello": "Hello Fatima! I hope you are having an amazing day. What would you like to explore today?",
     "how are you": "I am working perfectly and ready to answer your questions regarding computer science, education, or general knowledge!",
-    "what is your name": "I am an AI Smart Assistant configured by Fatima for her CodeAlpha internship project.",
+    "what is your name": "I am an AI Smart Assistant configured by Fatima for her internship project.",
     "who created you": "I was developed by Fatima using Python and Streamlit web layout integration.",
     
     # --- GENERAL KNOWLEDGE ---
@@ -81,7 +82,7 @@ knowledge_base = {
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Display entire dialogue history with new distinct high-visibility layouts
+# Display entire dialogue history with clean spacing
 for msg in st.session_state.chat_history:
     if msg["role"] == "user":
         st.markdown(f"<div class='chat-bubble-user'><b>👤 You:</b> {msg['text']}</div>", unsafe_allow_html=True)
@@ -92,27 +93,23 @@ for msg in st.session_state.chat_history:
 user_query = st.chat_input("Ask me anything...")
 
 if user_query:
-    # Render user query instantly
     st.markdown(f"<div class='chat-bubble-user'><b>👤 You:</b> {user_query}</div>", unsafe_allow_html=True)
     st.session_state.chat_history.append({"role": "user", "text": user_query})
     
-    # Clean string processing for checking database
     query_clean = user_query.strip().lower()
     
-    # Matching logic looking for keywords (e.g., 'study after cs')
     chatbot_response = ""
     for keyword, response in knowledge_base.items():
         if keyword in query_clean:
             chatbot_response = response
             break
             
-    # Default fallback behavior for unknown inputs
     if not chatbot_response:
         chatbot_response = "❌ **Status: Unknown/Unsupported Question.** I am currently customized to answer multi-domain queries regarding Education (e.g., 'study after cs'), Personal chitchat, or General Knowledge. Please refine your phrase or ask about your career track!"
 
-    # Render bot response cleanly
     st.markdown(f"<div class='chat-bubble-bot'><b>🤖 Bot:</b> {chatbot_response}</div>", unsafe_allow_html=True)
     st.session_state.chat_history.append({"role": "assistant", "text": chatbot_response})
 
+# 5. Only One Premium Single Human Credit Footer Line
 st.write("---")
-st.caption("Developed by Fatima | Student ID: CA/DF1/190219 | CodeAlpha Internship Assignment")
+st.markdown("<p style='text-align: center; color: #64748b; font-size: 13px;'>Project Developed by Fatima | Student ID: CA/DF1/190219</p>", unsafe_allow_html=True)
