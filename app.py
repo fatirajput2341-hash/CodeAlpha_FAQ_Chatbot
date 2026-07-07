@@ -1,88 +1,110 @@
-import os
 import streamlit as st
-from google import genai
-from google.genai import types
+import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from nltk.tokenize import word_tokenize
 
-# Page Configurations (Title aur Icon)
+# NLTK resources setup
+@st.cache_resource
+def download_nltk_resources():
+    nltk.download('punkt')
+    nltk.download('punkt_tab')
+
+download_nltk_resources()
+
+# UI Layout Settings
 st.set_page_config(page_title="AI FAQ Chatbot", page_icon="🤖", layout="centered")
 
 # --- UI Styling: Professional Dark/Clean UI ---
 st.markdown("""
     <style>
-    /* Main Background color */
-    .stApp {
-        background-color: #141d26;
-        color: #ffffff;
-    }
-    /* Input Box Styling */
-    .stChatInputContainer {
-        border-radius: 10px;
-        border: 1px solid #1da1f2;
-    }
-    /* Titles styling */
-    h1, h3, p {
-        color: #ffffff !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    .stApp { background-color: #141d26; color: #ffffff; }
+    .stChatInputContainer { border-radius: 10px; border: 1px solid #1da1f2; }
+    h1, h3, p { color: #ffffff !important; font-family: 'Segoe UI', sans-serif; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🤖 Intelligent FAQ Chatbot")
 st.write("Ask anything in any language (English, Urdu, Roman Urdu)...")
 
-# --- Gemini API Client Setup ---
-# Apni Gemini API Key yahan enter karein (Ya environment variable set karein)
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_ACTUAL_GEMINI_API_KEY_HERE")
-client = genai.Client(api_key=GEMINI_API_KEY)
+# --- Task 2: Multi-Language FAQ Dataset (English, Urdu, Roman Urdu mapping) ---
+faq_data = [
+    {
+        "keywords": ["return", "refund", "wapis", "chang", "vapis", "تبدیل", "واپس"],
+        "answer": "English: You can return any product within 30 days of purchase.\n\nRoman Urdu: Aap 30 din ke andar product wapis kar sakte hain.\n\nUrdu: آپ 30 دن کے اندر پروڈکٹ واپس کر سکتے ہیں۔"
+    },
+    {
+        "keywords": ["shipping", "delivery", "time", "day", "kab", "milega", "pohanchega", "ڈلیوری", "دن"],
+        "answer": "English: Standard shipping takes 3-5 business days.\n\nRoman Urdu: Delivery me 3 se 5 din lagte hain.\n\nUrdu: ڈلیوری میں 3 سے 5 دن لگتے ہیں۔"
+    },
+    {
+        "keywords": ["track", "order", "status", "check", "kahan hai", "ٹریک", "آرڈر"],
+        "answer": "English: You will receive a tracking link via email once your order ships.\n\nRoman Urdu: Order ship hone ke baad aapko email par tracking link mil jayega.\n\nUrdu: آرڈر شپ ہونے کے بعد آپ کو ای میل پر ٹریکنگ لنک مل جائے گا۔"
+    },
+    {
+        "keywords": ["payment", "pay", "card", "pese", "cash", "paisa", "ادائیگی", "پیسے"],
+        "answer": "English: We accept Credit/Debit cards, PayPal, and Apple Pay.\n\nRoman Urdu: Hum Credit/Debit cards, PayPal aur Apple Pay accept karte hain.\n\nUrdu: ہم کریڈٹ/ڈیبٹ کارڈز، پے پال اور ایپل پے قبول کرتے ہیں۔"
+    }
+]
 
-# --- Task 2: System Instructions for FAQ & Multi-language ---
-system_instruction = """
-You are an expert FAQ Chatbot for a product/service. 
-Your primary task is to match user questions with the company's FAQ knowledge base.
-FAQs Context:
-- Return Policy: 30 days of purchase, money-back guarantee.
-- Shipping: Standard takes 3-5 business days. International shipping is available with extra charges.
-- Order Tracking: Tracking link sent via email after shipment.
-- Payment Methods: Credit/Debit cards, PayPal, Apple Pay.
+# Preprocessing for matching
+def simple_clean(text):
+    return " ".join(word_tokenize(text.lower().strip()))
 
-CRITICAL RULES:
-1. The user can ask questions in English, Urdu (Urdu script), or Roman Urdu/Hinglish (e.g., 'delivery kitni der me hogi?', 'pese kese dene hain?', 'hloo').
-2. Always detect the user's language and reply in the EXACT SAME language/style they used. If they ask in Roman Urdu, reply in Roman Urdu. If they say 'hloo/hi', greet them friendly.
-3. If the question is completely outside these FAQs, politely tell them that you only handle product FAQs.
-"""
-
-# Streamlit Session State for Chat History
+# Session State for Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display previous messages
+# Display old messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# User Input Field
+# User Chat Input
 if user_message := st.chat_input("Ask anything in any language..."):
-    # Display User Message
     with st.chat_message("user"):
         st.write(user_message)
     st.session_state.messages.append({"role": "user", "content": user_message})
 
-    # Call Gemini API with System Instructions
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.3 # Low temperature keeps it focused on FAQs
-            )
-        )
-        bot_reply = response.text
-    except Exception as e:
-        bot_reply = "Connection is adjusting. Please type your query once more!"
-        print(f"Error: {e}")
+    clean_input = simple_clean(user_message)
+    user_words = clean_input.split()
 
-    # Display Bot Response
+    # Greetings Handle Karna
+    if clean_input in ["hello", "hi", "hey", "hloo", "hy", "asalam", "salam", "اؤ"]:
+        bot_reply = "Hello! How can I help you today? Ask me about our return policy, shipping, tracking, or payments.\n\n(Aap Urdu ya Roman Urdu me bhi pooch sakte hain!)"
+    else:
+        # --- Task 2: Advanced NLP Match Logic ---
+        best_match_idx = -1
+        max_matches = 0
+        
+        # Keyword context score base calculation
+        for idx, faq in enumerate(faq_data):
+            match_count = sum(1 for word in user_words if word in faq["keywords"])
+            if match_count > max_matches:
+                max_matches = match_count
+                best_match_idx = idx
+
+        if best_match_idx != -1 and max_matches > 0:
+            bot_reply = faq_data[best_match_idx]["answer"]
+        else:
+            # Fallback Cosine Similarity mechanism if keyword fallback is deep
+            all_questions = ["return policy refund change", "shipping delivery time duration days", "track order status package", "payment options cash credit card money"]
+            all_texts = [clean_input] + all_questions
+            
+            try:
+                vectorizer = TfidfVectorizer()
+                tfidf_matrix = vectorizer.fit_transform(all_texts)
+                scores = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:])
+                best_idx = scores.argmax()
+                
+                if scores[0][best_idx] > 0.15:
+                    bot_reply = faq_data[best_idx]["answer"]
+                else:
+                    bot_reply = "English: Sorry, I couldn't find an answer to that in our FAQs.\n\nRoman Urdu: Maazrat, mujhe iska jawab FAQs me nahi mila. Kirpa karke shipping, return ya payment ke baare me poochein."
+            except Exception:
+                bot_reply = "Please ask a specific question about our services!"
+
+    # Display Bot Reply
     with st.chat_message("assistant"):
         st.write(bot_reply)
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
